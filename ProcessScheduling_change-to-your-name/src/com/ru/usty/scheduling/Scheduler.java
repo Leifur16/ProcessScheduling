@@ -27,6 +27,7 @@ public class Scheduler {
 		/**
 		 * Add general initialization code here (if needed)
 		 */
+		processQueue = new LinkedList<Integer>();
 	}
 
 	/**
@@ -103,9 +104,13 @@ public class Scheduler {
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
 		
+		//processExecution.switchToProcess(processID);
 		
-		processExecution.switchToProcess(processID);
-		
+		if(processQueue.size() == 0) {
+			System.out.println("hello?");
+			processExecution.switchToProcess(processID);
+		}
+		processQueue.add(processID);
 
 	}
 
@@ -118,7 +123,10 @@ public class Scheduler {
 		 * Add scheduling code here
 		 */
 		System.out.println("Process finished");
-
+		processQueue.remove();
+		if(processQueue.size() > 0) {
+			processExecution.switchToProcess(processQueue.element());
+		}
 
 	}
 }
