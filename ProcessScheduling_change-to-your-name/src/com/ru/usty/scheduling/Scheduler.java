@@ -1,5 +1,7 @@
 package com.ru.usty.scheduling;
 
+/*I AM POO!*/
+
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class Scheduler {
