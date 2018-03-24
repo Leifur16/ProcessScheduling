@@ -8,11 +8,14 @@ import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
 
-	ProcessExecution processExecution;
+	static ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
+	public static boolean rrMayDie = false;
 	
-	Queue<Integer> processQueue;
+	public static Queue<Integer> processQueue;
+	private Thread thread = null;
+	
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
@@ -29,16 +32,33 @@ public class Scheduler {
 		 */
 		processQueue = new LinkedList<Integer>();
 	}
-
+	
+	public static void nextQueue() {
+		if(processQueue.size() != 0) {
+			int tmp = processQueue.element();
+			processQueue.remove();
+			processQueue.add(tmp);
+			processExecution.switchToProcess(processQueue.element());
+			//System.out.println("went here now");
+		}
+		else {
+			System.out.println("ERROR");
+		}
+		
+	}
+	
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void startScheduling(Policy policy, int quantum) {
+		
+		
 
 		this.policy = policy;
 		this.quantum = quantum;
 		System.out.println("policy: " + policy);
 		System.out.println("quantum: " + quantum);
+		
 
 		/**
 		 * Add general initialization code here (if needed)
@@ -57,8 +77,19 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			
+				
+			
+			processQueue = new LinkedList<Integer>();
+			
+			//thread = new Thread(new RoundRobinTimer(quantum));
+			//thread.start();
+
+
 			break;
 		case SPN:	//Shortest process next
+			rrMayDie = true;
+
 			System.out.println("Starting new scheduling task: Shortest process next");
 			/**
 			 * Add your policy specific initialization code here (if needed)
@@ -87,7 +118,8 @@ public class Scheduler {
 		/**
 		 * Add general scheduling or initialization code here (if needed)
 		 */
-
+		
+		
 	}
 
 	/**
@@ -100,6 +132,7 @@ public class Scheduler {
 		 */
 		ProcessInfo info = processExecution.getProcessInfo(processID);
 		
+		System.out.println("PROCESS ID: " + processID);
 		System.out.println("total time: " + info.totalServiceTime);
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
@@ -107,18 +140,52 @@ public class Scheduler {
 		//processExecution.switchToProcess(processID);
 		switch(policy) {
 		
+<<<<<<< HEAD
 		case FCFS:
+=======
+		
+		
+		switch(policy) {
+		case FCFS:	//First-come-first-served
+>>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			if(processQueue.size() == 0) {
 				System.out.println("hello?");
 				processExecution.switchToProcess(processID);
 			}
 			processQueue.add(processID);
+<<<<<<< HEAD
 			break;
 		case RR:
 			break;
 		}
 		
 
+=======
+			
+			break;
+		case RR:	//Round robin
+			
+			
+			
+			if(processQueue.size() == 0) {
+				rrMayDie = false;
+				thread = new Thread(new RoundRobinTimer(quantum));				
+				thread.start();
+			}
+			
+			processQueue.add(processID);
+
+				
+				
+			
+			//System.out.println("Process Queue size: " + processQueue.size());
+			
+			
+			break;
+		default:
+			break;
+		}
+>>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 	}
 
 	/**
@@ -130,18 +197,58 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
+<<<<<<< HEAD
 		switch (policy) {
 		
 		case FCFS:
+=======
+		//ProcessInfo info = processExecution.getProcessInfo(processID);
+		
+		
+		switch(policy) {
+		case FCFS:	//First-come-first-served
+			System.out.println("Process finished");
+>>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			processQueue.remove();
 			if(processQueue.size() > 0) {
 				processExecution.switchToProcess(processQueue.element());
 			}
+<<<<<<< HEAD
 			break;
 		case RR:
+=======
+			
+			break;
+		case RR:	//Round robin
+			System.out.println("Process finished " + processID);
+			System.out.println("QUEUE SIZE " + processQueue.size());
+			
+			rrMayDie = true;
+			System.out.println("PROCESS DIED " + processID);
+			processQueue.remove();
+			
+			
+			if(processQueue.size() != 0) {
+				processExecution.switchToProcess(processQueue.element());
+				
+				rrMayDie = false;
+				thread = new Thread(new RoundRobinTimer(quantum));
+				thread.start();
+				
+				
+			}else {
+				System.out.println("END oF THE LINE");
+			}
+			break;
+		default:
+>>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			break;
 		}
 		
 		
+<<<<<<< HEAD
+=======
+
+>>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 	}
 }
