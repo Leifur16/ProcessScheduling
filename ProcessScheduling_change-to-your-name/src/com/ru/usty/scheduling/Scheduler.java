@@ -105,12 +105,19 @@ public class Scheduler {
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
 		
 		//processExecution.switchToProcess(processID);
+		switch(policy) {
 		
-		if(processQueue.size() == 0) {
-			System.out.println("hello?");
-			processExecution.switchToProcess(processID);
+		case FCFS:
+			if(processQueue.size() == 0) {
+				System.out.println("hello?");
+				processExecution.switchToProcess(processID);
+			}
+			processQueue.add(processID);
+			break;
+		case RR:
+			break;
 		}
-		processQueue.add(processID);
+		
 
 	}
 
@@ -118,15 +125,23 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processFinished(int processID) {
-
+		
+		System.out.println("Process finished");
 		/**
 		 * Add scheduling code here
 		 */
-		System.out.println("Process finished");
-		processQueue.remove();
-		if(processQueue.size() > 0) {
-			processExecution.switchToProcess(processQueue.element());
+		switch (policy) {
+		
+		case FCFS:
+			processQueue.remove();
+			if(processQueue.size() > 0) {
+				processExecution.switchToProcess(processQueue.element());
+			}
+			break;
+		case RR:
+			break;
 		}
-
+		
+		
 	}
 }
