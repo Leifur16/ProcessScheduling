@@ -15,6 +15,7 @@ public class Scheduler {
 	public static boolean rrMayDie = false;
 	
 	public static Queue<Integer> processQueue;
+	public static LinkedList<Integer> linkedList;
 	private Thread thread = null;
 	
 	/**
@@ -36,7 +37,6 @@ public class Scheduler {
 	}
 	
 	public static void nextQueue() {
-		
 		try {
 			switchMutex.acquire();
 				if(processQueue.size() > 1) {
@@ -49,8 +49,34 @@ public class Scheduler {
 				}
 			switchMutex.release();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}	
+	}
+	
+	public void nextHRRN() {
+
+		double responseRatio = 0.0;
+		double maxRatio = -1;
+		int maxRatioID = -1;
+		
+		if(linkedList.size() == 0) {return;} // Nothing in list, do nothing.
+		
+		for (int processID : linkedList) {
+			ProcessInfo info = processExecution.getProcessInfo(processID);
+            responseRatio = 1 + (info.elapsedWaitingTime  / info.totalServiceTime);
+
+            if(maxRatio < responseRatio) {
+            	maxRatioID = processID;
+            	maxRatio = responseRatio;
+            }
+        }
+			
+		if(maxRatioID == linkedList.element()) { // First in list is highest ratio
+			processExecution.switchToProcess(linkedList.element());
+		}else { // First in queue is not highest ratio, move to front of list	
+			linkedList.remove(linkedList.indexOf(maxRatioID));
+			linkedList.addFirst(maxRatioID);
+			processExecution.switchToProcess(linkedList.element());
 		}	
 	}
 	
@@ -123,6 +149,9 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			
+			linkedList = new LinkedList<Integer>();
+			
 			break;
 		case FB:	//Feedback
 			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);
@@ -171,6 +200,20 @@ public class Scheduler {
 			}
 			
 			break;
+		case HRRN:	//Highest response ratio next
+			System.out.println("HRRN added process entered!");
+
+			if(linkedList.size() == 0) {
+				System.out.println("First time only?????????????????????????????????");
+				linkedList.add(processID);
+				processExecution.switchToProcess(processID);
+			}else {
+				linkedList.add(processID);
+			}
+			
+			
+			
+			break;
 		default:
 			break;
 		}
@@ -195,15 +238,22 @@ public class Scheduler {
 			}
 			break;
 		case RR:	//Round robin
-			
+	
 			try {
 				switchMutex.acquire();
-					processQueue.remove();
+					processQueue.remove(processID);
 				switchMutex.release();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			
+			break;
+		case HRRN:	//Highest response ratio next
+			System.out.println("HRRN removed process entered!");
+			
+			linkedList.removeFirst();
+			nextHRRN();
 			
 			break;
 		default:
