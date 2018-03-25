@@ -110,8 +110,15 @@ public class Scheduler {
 			
 			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
 				if(!queue.isEmpty()) {
-					processExecution.switchToProcess(queue.element().ID);
-					lastRunningProcess = queue.element();
+					try {
+						switchMutex.acquire();
+						processExecution.switchToProcess(queue.element().ID);
+						lastRunningProcess = queue.element();
+						switchMutex.release();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					return;
 				}
 			}
