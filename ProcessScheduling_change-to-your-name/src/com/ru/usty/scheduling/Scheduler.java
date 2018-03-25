@@ -1,9 +1,13 @@
 package com.ru.usty.scheduling;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.Queue;
 
+import com.badlogic.gdx.utils.Timer;
 import com.ru.usty.scheduling.process.ProcessExecution;
+import com.ru.usty.scheduling.process.ProcessHandler;
 import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
@@ -11,8 +15,13 @@ public class Scheduler {
 	ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
+	public static Thread timer;
+	ProcessInfo info;
+	SPNSchedule schedule;
 	
 	Queue<Integer> processQueue;
+	PriorityQueue<SPNSchedule> priorityProcessQueue;
+
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
@@ -28,6 +37,7 @@ public class Scheduler {
 		 * Add general initialization code here (if needed)
 		 */
 		processQueue = new LinkedList<Integer>();
+		
 	}
 
 	/**
@@ -57,9 +67,16 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			
+			timer = new Thread();
+			timer.start();
+			processQueue = new LinkedList<Integer>();
+			
 			break;
 		case SPN:	//Shortest process next
 			System.out.println("Starting new scheduling task: Shortest process next");
+			priorityProcessQueue = new PriorityQueue<SPNSchedule>();
+			schedule = new SPNSchedule();
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
@@ -98,23 +115,50 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
-		ProcessInfo info = processExecution.getProcessInfo(processID);
+		info = processExecution.getProcessInfo(processID);
 		
+		/*
 		System.out.println("total time: " + info.totalServiceTime);
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
-		
+		*/
 		//processExecution.switchToProcess(processID);
 		switch(policy) {
 		
 		case FCFS:
 			if(processQueue.size() == 0) {
-				System.out.println("hello?");
 				processExecution.switchToProcess(processID);
 			}
 			processQueue.add(processID);
 			break;
 		case RR:
+			try {
+				
+				timer.sleep(quantum - info.elapsedExecutionTime);
+				//info.elapsedExecutionTime = quantum;
+				if(!processQueue.contains(processID) ) {
+					processQueue.add(processID);	
+				}
+				
+				processExecution.switchToProcess(processID);
+				
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			break;
+		case SPN:
+			info = processExecution.getProcessInfo(processID);
+			SPNSchedule spn = new SPNSchedule(processID, info.totalServiceTime);
+			
+			schedule.addProcess(processID, info.totalServiceTime);
+			
+			if(priorityProcessQueue.size() == 0) {
+				processExecution.switchToProcess(processID);
+			}
+			
+			priorityProcessQueue.add(spn);
+			
 			break;
 		}
 		
@@ -139,6 +183,33 @@ public class Scheduler {
 			}
 			break;
 		case RR:
+			
+			processQueue.remove();
+			if(processQueue.size() > 0) {
+				
+				
+				//info.elapsedExecutionTime = 0;
+				//processAdded(processQueue.element());
+				try {
+					timer.join();
+					processExecution.switchToProcess(processQueue.element());
+					
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+			} 
+			break;
+		case SPN:
+			SPNSchedule sched = new SPNSchedule(processID, schedule.getTimeForId(processID));
+			
+			priorityProcessQueue.remove(sched);
+			
+			if(!priorityProcessQueue.isEmpty()) {	
+				processExecution.switchToProcess(priorityProcessQueue.peek().processID);
+			}
+			
 			break;
 		}
 		
