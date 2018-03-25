@@ -2,6 +2,7 @@ package com.ru.usty.scheduling;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.Semaphore;
 
 import com.ru.usty.scheduling.process.ProcessExecution;
 import com.ru.usty.scheduling.process.ProcessInfo;
@@ -19,7 +20,8 @@ public class Scheduler {
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
-
+	
+	static Semaphore switchMutex = null; 
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -34,25 +36,28 @@ public class Scheduler {
 	}
 	
 	public static void nextQueue() {
-		if(processQueue.size() != 0) {
-			int tmp = processQueue.element();
-			processQueue.remove();
-			processQueue.add(tmp);
-			processExecution.switchToProcess(processQueue.element());
-			//System.out.println("went here now");
-		}
-		else {
-			System.out.println("ERROR");
-		}
 		
+		try {
+			switchMutex.acquire();
+				if(processQueue.size() > 1) {
+					int temp = processQueue.remove();
+					processQueue.add(temp);
+					processExecution.switchToProcess(processQueue.element());
+				}
+				else if(processQueue.size() == 1) {
+					processExecution.switchToProcess(processQueue.element());
+				}
+			switchMutex.release();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 	}
 	
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void startScheduling(Policy policy, int quantum) {
-		
-		
 
 		this.policy = policy;
 		this.quantum = quantum;
@@ -63,6 +68,19 @@ public class Scheduler {
 		/**
 		 * Add general initialization code here (if needed)
 		 */
+		
+		rrMayDie = true;
+		if(thread != null) {
+			if(thread.isAlive()) {
+				try {
+					System.out.println("==================== thread was removed  IN BEGINNING =====================");
+					thread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		rrMayDie = false;
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -77,18 +95,17 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
-			
-				
-			
+			processQueue = null;
 			processQueue = new LinkedList<Integer>();
+			switchMutex = new Semaphore(1);
 			
-			//thread = new Thread(new RoundRobinTimer(quantum));
-			//thread.start();
-
+			System.out.println("==================== thread was started  IN BEGINNING =====================");
+			thread = new Thread(new RoundRobinTimer(quantum));
+			thread.start();
 
 			break;
 		case SPN:	//Shortest process next
-			rrMayDie = true;
+			//rrMayDie = true;
 
 			System.out.println("Starting new scheduling task: Shortest process next");
 			/**
@@ -114,12 +131,9 @@ public class Scheduler {
 			 */
 			break;
 		}
-
 		/**
 		 * Add general scheduling or initialization code here (if needed)
 		 */
-		
-		
 	}
 
 	/**
@@ -137,55 +151,29 @@ public class Scheduler {
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
 		
-		//processExecution.switchToProcess(processID);
-		switch(policy) {
-		
-<<<<<<< HEAD
-		case FCFS:
-=======
-		
-		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
->>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			if(processQueue.size() == 0) {
 				System.out.println("hello?");
 				processExecution.switchToProcess(processID);
 			}
 			processQueue.add(processID);
-<<<<<<< HEAD
-			break;
-		case RR:
-			break;
-		}
-		
-
-=======
-			
 			break;
 		case RR:	//Round robin
 			
-			
-			
-			if(processQueue.size() == 0) {
-				rrMayDie = false;
-				thread = new Thread(new RoundRobinTimer(quantum));				
-				thread.start();
+			try {
+				switchMutex.acquire();
+					processQueue.add(processID);	
+				switchMutex.release();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			
-			processQueue.add(processID);
-
-				
-				
-			
-			//System.out.println("Process Queue size: " + processQueue.size());
-			
 			
 			break;
 		default:
 			break;
 		}
->>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 	}
 
 	/**
@@ -197,58 +185,29 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
-<<<<<<< HEAD
-		switch (policy) {
-		
-		case FCFS:
-=======
-		//ProcessInfo info = processExecution.getProcessInfo(processID);
-		
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Process finished");
->>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			processQueue.remove();
 			if(processQueue.size() > 0) {
 				processExecution.switchToProcess(processQueue.element());
 			}
-<<<<<<< HEAD
-			break;
-		case RR:
-=======
-			
 			break;
 		case RR:	//Round robin
-			System.out.println("Process finished " + processID);
-			System.out.println("QUEUE SIZE " + processQueue.size());
 			
-			rrMayDie = true;
-			System.out.println("PROCESS DIED " + processID);
-			processQueue.remove();
-			
-			
-			if(processQueue.size() != 0) {
-				processExecution.switchToProcess(processQueue.element());
-				
-				rrMayDie = false;
-				thread = new Thread(new RoundRobinTimer(quantum));
-				thread.start();
-				
-				
-			}else {
-				System.out.println("END oF THE LINE");
+			try {
+				switchMutex.acquire();
+					processQueue.remove();
+				switchMutex.release();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			
 			break;
 		default:
->>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
 			break;
-		}
-		
-		
-<<<<<<< HEAD
-=======
-
->>>>>>> 667439a2edb6a01097ba3eda15665794edde8019
+		}	
 	}
 }

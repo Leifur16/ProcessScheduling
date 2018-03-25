@@ -1,14 +1,11 @@
 package com.ru.usty.scheduling;
 
-import java.util.Queue;
-
 import com.ru.usty.scheduling.process.ProcessExecution;
 
 public class RoundRobinTimer implements Runnable{
 	
 	private int quantum;
 	ProcessExecution processExecution;
-	
 	
 	// Constructor
 	public RoundRobinTimer(int quantum) {
@@ -17,9 +14,14 @@ public class RoundRobinTimer implements Runnable{
 	
 	@Override
 	public void run() {
+		System.out.println("============================= I live ==========================================");
+		
 		while(true) {
+			if(Scheduler.rrMayDie) {
+				System.out.println("============================= I diead ==========================================");
+				return;
+			}
 			
-			if(Scheduler.rrMayDie) {return;}
 			try {
 				Thread.sleep(quantum);
 				//System.out.println("This thing is running ");
@@ -30,7 +32,6 @@ public class RoundRobinTimer implements Runnable{
 			}
 			
 			Scheduler.nextQueue();
-			
 		}
 	}
 }
