@@ -2,144 +2,121 @@ package com.ru.usty.scheduling;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.Semaphore;
 
 import com.ru.usty.scheduling.process.ProcessExecution;
 import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
-
-	static ProcessExecution processExecution;
-	Policy policy;
-	int quantum;
-	public static boolean rrMayDie = false;
-	
-	public static Queue<Integer> processQueue;
-	private Thread thread = null;
 	
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
+	static ProcessExecution processExecution;
+	Policy policy;
+	int quantum;
+	public static boolean rrMayDie = false;
+	public static Queue<Integer> processQueue;
+	private static Thread thread = null;
+	
+	static Semaphore switchToProcessMutex = new Semaphore(1);
 
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public Scheduler(ProcessExecution processExecution) {
-		this.processExecution = processExecution;
-
-		/**
-		 * Add general initialization code here (if needed)
-		 */
+		Scheduler.processExecution = processExecution;
 		processQueue = new LinkedList<Integer>();
 	}
-	
+
 	public static void nextQueue() {
-		if(processQueue.size() != 0) {
-			int tmp = processQueue.element();
-			processQueue.remove();
-			processQueue.add(tmp);
-			processExecution.switchToProcess(processQueue.element());
-			//System.out.println("went here now");
+		if(processQueue.size() > 1) {
+			try {
+				switchToProcessMutex.acquire();
+					int temp = processQueue.remove();
+					processQueue.add(temp);
+					processExecution.switchToProcess(processQueue.element());
+				switchToProcessMutex.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
-		else {
-			System.out.println("ERROR");
+		else if(processQueue.size() == 1) {
+			try {
+				switchToProcessMutex.acquire();
+					processExecution.switchToProcess(processQueue.element());
+				switchToProcessMutex.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
-		
 	}
 	
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void startScheduling(Policy policy, int quantum) {
-		
-		
-
 		this.policy = policy;
 		this.quantum = quantum;
-		System.out.println("policy: " + policy);
-		System.out.println("quantum: " + quantum);
-		
-
-		/**
-		 * Add general initialization code here (if needed)
-		 */
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			processQueue = new LinkedList<Integer>();
 			break;
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			
-				
-			
+			rrMayDie = true;
+			if(thread != null) {
+				if(thread.isAlive()) {
+					try {
+						System.out.println("==================== thread was removed  IN BEGINNING =====================");
+						thread.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			rrMayDie = false;
+					
 			processQueue = new LinkedList<Integer>();
+	
+			thread = new Thread(new RoundRobinTimer(quantum));
+			thread.start();
 			
-			//thread = new Thread(new RoundRobinTimer(quantum));
-			//thread.start();
-
-
 			break;
 		case SPN:	//Shortest process next
-			rrMayDie = true;
-
 			System.out.println("Starting new scheduling task: Shortest process next");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			break;
 		case SRT:	//Shortest remaining time
 			System.out.println("Starting new scheduling task: Shortest remaining time");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			break;
 		case HRRN:	//Highest response ratio next
 			System.out.println("Starting new scheduling task: Highest response ratio next");
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			break;
 		case FB:	//Feedback
 			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);
-			/**
-			 * Add your policy specific initialization code here (if needed)
-			 */
 			break;
 		}
 
 		/**
 		 * Add general scheduling or initialization code here (if needed)
-		 */
-		
-		
+		 */	
 	}
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processAdded(int processID) {
-
-		/**
-		 * Add scheduling code here
-		 */
 		ProcessInfo info = processExecution.getProcessInfo(processID);
 		
 		System.out.println("PROCESS ID: " + processID);
 		System.out.println("total time: " + info.totalServiceTime);
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
-		
-		//processExecution.switchToProcess(processID);
-		
-		
+
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -152,22 +129,15 @@ public class Scheduler {
 			break;
 		case RR:	//Round robin
 			
-			
-			
-			if(processQueue.size() == 0) {
-				rrMayDie = false;
-				thread = new Thread(new RoundRobinTimer(quantum));				
-				thread.start();
+			//processQueue.add(processID);
+			try {
+				switchToProcessMutex.acquire();
+					processQueue.add(processID);
+				switchToProcessMutex.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
-			
-			processQueue.add(processID);
 
-				
-				
-			
-			//System.out.println("Process Queue size: " + processQueue.size());
-			
-			
 			break;
 		default:
 			break;
@@ -178,12 +148,6 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processFinished(int processID) {
-
-		/**
-		 * Add scheduling code here
-		 */
-		//ProcessInfo info = processExecution.getProcessInfo(processID);
-		
 		
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -196,24 +160,20 @@ public class Scheduler {
 			break;
 		case RR:	//Round robin
 			System.out.println("Process finished " + processID);
-			System.out.println("QUEUE SIZE " + processQueue.size());
-			
-			rrMayDie = true;
 			System.out.println("PROCESS DIED " + processID);
-			processQueue.remove();
 			
 			
-			if(processQueue.size() != 0) {
-				processExecution.switchToProcess(processQueue.element());
-				
-				rrMayDie = false;
-				thread = new Thread(new RoundRobinTimer(quantum));
-				thread.start();
-				
-				
-			}else {
-				System.out.println("END oF THE LINE");
+			try {
+				switchToProcessMutex.acquire();
+					processQueue.remove();
+				switchToProcessMutex.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
+			
+			
+			
+
 			break;
 		default:
 			break;

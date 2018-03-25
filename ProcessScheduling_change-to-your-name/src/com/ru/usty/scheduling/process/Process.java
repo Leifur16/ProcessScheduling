@@ -25,6 +25,8 @@ public class Process {
 
 		this.running = false;
 		this.finished = false;
+		
+		System.out.println("New process made id: " + id + " time to run: " + timeToRun);
 	}
 
 	public int getID() {
