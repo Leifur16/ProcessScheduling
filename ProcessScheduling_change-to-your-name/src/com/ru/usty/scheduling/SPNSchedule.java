@@ -3,7 +3,6 @@ package com.ru.usty.scheduling;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.ru.usty.scheduling.process.Process;
 
 public class SPNSchedule implements Comparable<SPNSchedule> {
 	int processID;

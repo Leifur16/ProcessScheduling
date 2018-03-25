@@ -1,31 +1,35 @@
 package com.ru.usty.scheduling;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
+import java.util.concurrent.Semaphore;
 
-import com.badlogic.gdx.utils.Timer;
 import com.ru.usty.scheduling.process.ProcessExecution;
-import com.ru.usty.scheduling.process.ProcessHandler;
 import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
 
-	ProcessExecution processExecution;
+	static ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
 	public static Thread timer;
 	ProcessInfo info;
 	SPNSchedule schedule;
 	
-	Queue<Integer> processQueue;
+	//Queue<Integer> processQueue;
 	PriorityQueue<SPNSchedule> priorityProcessQueue;
 
+	public static boolean rrMayDie = false;
+	
+	public static Queue<Integer> processQueue;
+	private Thread thread = null;
+	
 	/**
 	 * Add any objects and variables here (if needed)
 	 */
-
+	
+	static Semaphore switchMutex = null; 
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -39,7 +43,26 @@ public class Scheduler {
 		processQueue = new LinkedList<Integer>();
 		
 	}
-
+	
+	public static void nextQueue() {
+		
+		try {
+			switchMutex.acquire();
+				if(processQueue.size() > 1) {
+					int temp = processQueue.remove();
+					processQueue.add(temp);
+					processExecution.switchToProcess(processQueue.element());
+				}
+				else if(processQueue.size() == 1) {
+					processExecution.switchToProcess(processQueue.element());
+				}
+			switchMutex.release();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
+	}
+	
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
@@ -49,10 +72,13 @@ public class Scheduler {
 		this.quantum = quantum;
 		System.out.println("policy: " + policy);
 		System.out.println("quantum: " + quantum);
+		
 
 		/**
 		 * Add general initialization code here (if needed)
 		 */
+		
+		
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -67,13 +93,31 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
-			
-			timer = new Thread();
-			timer.start();
+			rrMayDie = true;
+			if(thread != null) {
+				if(thread.isAlive()) {
+					try {
+						System.out.println("==================== thread was removed  IN BEGINNING =====================");
+						thread.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			rrMayDie = false;
+
+			processQueue = null;
 			processQueue = new LinkedList<Integer>();
+			switchMutex = new Semaphore(1);
 			
+			System.out.println("==================== thread was started  IN BEGINNING =====================");
+			thread = new Thread(new RoundRobinTimer(quantum));
+			thread.start();
+
 			break;
 		case SPN:	//Shortest process next
+			//rrMayDie = true;
+
 			System.out.println("Starting new scheduling task: Shortest process next");
 			priorityProcessQueue = new PriorityQueue<SPNSchedule>();
 			schedule = new SPNSchedule();
@@ -100,11 +144,9 @@ public class Scheduler {
 			 */
 			break;
 		}
-
 		/**
 		 * Add general scheduling or initialization code here (if needed)
 		 */
-
 	}
 
 	/**
@@ -123,32 +165,33 @@ public class Scheduler {
 		System.out.println("waiting time: " + info.elapsedWaitingTime);
 		*/
 		//processExecution.switchToProcess(processID);
-		switch(policy) {
+		info = processExecution.getProcessInfo(processID);
+		System.out.println("PROCESS ID: " + processID);
+		System.out.println("total time: " + info.totalServiceTime);
+		System.out.println("Execution time: " + info.elapsedExecutionTime);
+		System.out.println("waiting time: " + info.elapsedWaitingTime);
 		
-		case FCFS:
+		switch(policy) {
+		case FCFS:	//First-come-first-served
 			if(processQueue.size() == 0) {
 				processExecution.switchToProcess(processID);
 			}
 			processQueue.add(processID);
 			break;
-		case RR:
+
+		case RR:	//Round robin
+			
 			try {
-				
-				timer.sleep(quantum - info.elapsedExecutionTime);
-				//info.elapsedExecutionTime = quantum;
-				if(!processQueue.contains(processID) ) {
+				switchMutex.acquire();
 					processQueue.add(processID);	
-				}
-				
-				processExecution.switchToProcess(processID);
-				
+				switchMutex.release();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			break;
 		case SPN:
-			info = processExecution.getProcessInfo(processID);
+			
 			SPNSchedule spn = new SPNSchedule(processID, info.totalServiceTime);
 			
 			schedule.addProcess(processID, info.totalServiceTime);
@@ -159,10 +202,11 @@ public class Scheduler {
 			
 			priorityProcessQueue.add(spn);
 			
+			
 			break;
-		}
-		
+		default:
 
+		}
 	}
 
 	/**
@@ -174,33 +218,16 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
-		switch (policy) {
 		
-		case FCFS:
+		switch(policy) {
+		case FCFS:	//First-come-first-served
+			System.out.println("Process finished");
 			processQueue.remove();
 			if(processQueue.size() > 0) {
 				processExecution.switchToProcess(processQueue.element());
 			}
 			break;
-		case RR:
-			
-			processQueue.remove();
-			if(processQueue.size() > 0) {
-				
-				
-				//info.elapsedExecutionTime = 0;
-				//processAdded(processQueue.element());
-				try {
-					timer.join();
-					processExecution.switchToProcess(processQueue.element());
-					
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				
-			} 
-			break;
+
 		case SPN:
 			SPNSchedule sched = new SPNSchedule(processID, schedule.getTimeForId(processID));
 			
@@ -209,10 +236,20 @@ public class Scheduler {
 			if(!priorityProcessQueue.isEmpty()) {	
 				processExecution.switchToProcess(priorityProcessQueue.peek().processID);
 			}
+		break;
+			
+		case RR:	//Round robin
+			
+			try {
+				switchMutex.acquire();
+					processQueue.remove();
+				switchMutex.release();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			
 			break;
-		}
-		
-		
+		}	
 	}
 }
