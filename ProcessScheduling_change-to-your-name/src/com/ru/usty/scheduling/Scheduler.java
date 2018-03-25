@@ -1,6 +1,7 @@
 package com.ru.usty.scheduling;
 
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
@@ -12,6 +13,13 @@ public class Scheduler {
 	static ProcessExecution processExecution;
 	Policy policy;
 	int quantum;
+	public static Thread timer;
+	ProcessInfo info;
+	SPNSchedule schedule;
+	
+	//Queue<Integer> processQueue;
+	PriorityQueue<SPNSchedule> priorityProcessQueue;
+
 	public static boolean rrMayDie = false;
 	
 	public static Queue<Integer> processQueue;
@@ -34,6 +42,7 @@ public class Scheduler {
 		 * Add general initialization code here (if needed)
 		 */
 		processQueue = new LinkedList<Integer>();
+		
 	}
 	
 	public static void nextQueue() {
@@ -95,18 +104,7 @@ public class Scheduler {
 		 * Add general initialization code here (if needed)
 		 */
 		
-		rrMayDie = true;
-		if(thread != null) {
-			if(thread.isAlive()) {
-				try {
-					System.out.println("==================== thread was removed  IN BEGINNING =====================");
-					thread.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		rrMayDie = false;
+		
 
 		switch(policy) {
 		case FCFS:	//First-come-first-served
@@ -121,6 +119,19 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			rrMayDie = true;
+			if(thread != null) {
+				if(thread.isAlive()) {
+					try {
+						System.out.println("==================== thread was removed  IN BEGINNING =====================");
+						thread.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			rrMayDie = false;
+
 			processQueue = null;
 			processQueue = new LinkedList<Integer>();
 			switchMutex = new Semaphore(1);
@@ -134,6 +145,8 @@ public class Scheduler {
 			//rrMayDie = true;
 
 			System.out.println("Starting new scheduling task: Shortest process next");
+			priorityProcessQueue = new PriorityQueue<SPNSchedule>();
+			schedule = new SPNSchedule();
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
@@ -173,8 +186,15 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
-		ProcessInfo info = processExecution.getProcessInfo(processID);
+		info = processExecution.getProcessInfo(processID);
 		
+		/*
+		System.out.println("total time: " + info.totalServiceTime);
+		System.out.println("Execution time: " + info.elapsedExecutionTime);
+		System.out.println("waiting time: " + info.elapsedWaitingTime);
+		*/
+		//processExecution.switchToProcess(processID);
+		info = processExecution.getProcessInfo(processID);
 		System.out.println("PROCESS ID: " + processID);
 		System.out.println("total time: " + info.totalServiceTime);
 		System.out.println("Execution time: " + info.elapsedExecutionTime);
@@ -183,11 +203,11 @@ public class Scheduler {
 		switch(policy) {
 		case FCFS:	//First-come-first-served
 			if(processQueue.size() == 0) {
-				System.out.println("hello?");
 				processExecution.switchToProcess(processID);
 			}
 			processQueue.add(processID);
 			break;
+
 		case RR:	//Round robin
 			
 			try {
@@ -198,6 +218,19 @@ public class Scheduler {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			break;
+		case SPN:
+			
+			SPNSchedule spn = new SPNSchedule(processID, info.totalServiceTime);
+			
+			schedule.addProcess(processID, info.totalServiceTime);
+			
+			if(priorityProcessQueue.size() == 0) {
+				processExecution.switchToProcess(processID);
+			}
+			
+			priorityProcessQueue.add(spn);
+			
 			
 			break;
 		case HRRN:	//Highest response ratio next
@@ -215,7 +248,7 @@ public class Scheduler {
 			
 			break;
 		default:
-			break;
+
 		}
 	}
 
@@ -237,6 +270,17 @@ public class Scheduler {
 				processExecution.switchToProcess(processQueue.element());
 			}
 			break;
+
+		case SPN:
+			SPNSchedule sched = new SPNSchedule(processID, schedule.getTimeForId(processID));
+			
+			priorityProcessQueue.remove(sched);
+			
+			if(!priorityProcessQueue.isEmpty()) {	
+				processExecution.switchToProcess(priorityProcessQueue.peek().processID);
+			}
+		break;
+			
 		case RR:	//Round robin
 	
 			try {
