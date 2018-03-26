@@ -63,11 +63,24 @@ public class Scheduler {
 	
 	public static void nextQueue() {
 		
+		try {
+			switchMutex.acquire();
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		switch(policy) {
 		case RR:	// Round Robin
 			if(processQueue.size() > 1) {
                 if(lastRunningProcessID == processQueue.element()) { 
                     int temp = processQueue.remove();
+                    /*try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}*/
                     processQueue.add(temp);
                     processExecution.switchToProcess(processQueue.element());
                     lastRunningProcessID = processQueue.element();
@@ -92,6 +105,14 @@ public class Scheduler {
 					if( lastRunningProcess == lastRunningQueue.element()) {
 						FeedbackProcessInfo tmp = lastRunningQueue.element();
 						lastRunningQueue.remove();
+						
+						/*try {
+							Thread.sleep(10);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}*/
+						
 						if(tmp.getQueueID() < NUMBER_OF_FB_PQ-1) {
 							
 							tmp.setQueueID(tmp.getQueueID() + 1);
@@ -104,9 +125,12 @@ public class Scheduler {
 			
 			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
 				if(!queue.isEmpty()) {
+					System.out.println("Running process");
+					System.out.println(queue.size());
 					processExecution.switchToProcess(queue.element().getID());
 					lastRunningProcess = queue.element();
 					startTime = System.currentTimeMillis(); 
+					switchMutex.release();
 					return;
 				}
 			}
@@ -115,6 +139,7 @@ public class Scheduler {
 		default:
 			break;
 		}
+		switchMutex.release();
 	}
 	
 	public void nextHRRN() {
@@ -501,7 +526,7 @@ public class Scheduler {
 			try {
 				
 				switchMutex.acquire();
-					turnaroundArrCompletionTime.add(processID, System.currentTimeMillis());
+					//turnaroundArrCompletionTime.add(processID, System.currentTimeMillis());
 					FBprocessQueues.get(lastRunningProcess.getQueueID()).remove();
 				switchMutex.release();
 				switchMutexParent.acquire();
