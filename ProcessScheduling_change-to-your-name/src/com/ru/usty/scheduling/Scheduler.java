@@ -6,52 +6,61 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
-import javax.print.attribute.standard.Finishings;
-
 import com.ru.usty.scheduling.process.ProcessExecution;
 import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
+	/// ----- PUBLIC ----- ///
+		// Variables
+		public static Thread timer;
+		public static boolean rrMayDie = false;
+		public static long startTime;
+		public static long currTime;
+		public static boolean finished;
+		
+		// Semaphores
+		public static Semaphore switchMutexParent = null;
 
-	static ProcessExecution processExecution;
-	static Policy policy;
-	static int quantum;
-	public static Thread timer;
-	static ProcessInfo info;
-	SPNSchedule scheduleSPN;
-	SRTSchedule scheduleSRT;
-	static FeedbackProcessInfo lastRunningProcess;
+	/// ----- PRIVATE ----- ///
+		// Constants
+		private final static int NUMBER_OF_FB_PQ = 7;
+		private final static int INITIAL_QUEUE = 0;
+		
+		// Variables
+		private static long avgTurnaroundTime;
+		private static long avgRespnseTime;
+		private static int lastRunningProcessID;
+		//private static int quantum; // REMOVE
+		
+		// Enums
+		private static Policy policy;
+		
+		// Classes
+		private static ProcessExecution processExecution;
+		private static ProcessInfo info;
+		private static SPNSchedule scheduleSPN;
+		private static SRTSchedule scheduleSRT;
+		private static FeedbackProcessInfo lastRunningProcess;
 	
-	public final static int NUMBER_OF_FB_PQ = 7;
-	public final int INITIAL_QUEUE = 0;
-	public static boolean finished;
-	
-	//Queue<Integer> processQueue;
-	PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
-	PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
-	public LinkedList<Long> turnaroundArrArrivalTime;
-	public LinkedList<Long> turnaroundArrCompletionTime;
-	public LinkedList<Long> responseArrArrivalTime;
-	public long avgTurnaroundTime;
-	public long avgRespnseTime;
-
-	public static boolean rrMayDie = false;
-	
-	public static Queue<Integer> processQueue;
-	public static LinkedList<Integer> linkedList;
-	private static Thread thread = null;
-	public static ArrayList< Queue<FeedbackProcessInfo>> FBprocessQueues;
-	
-	private static int lastRunningProcessID;
-	
-	/**
-	 * Add any objects and variables here (if needed)
-	 */
-	
-	static Semaphore switchMutex = null;
-	static Semaphore switchMutexParent = null;
-	static long startTime;
-	static long currTime;
+		// Queues
+		private static PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
+		private static PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
+		private static Queue<Integer> processQueue;
+		
+		// Lists
+		private static ArrayList< Queue<FeedbackProcessInfo>> FBprocessQueues;
+		private static LinkedList<Integer> linkedList;
+		private static LinkedList<Long> turnaroundArrArrivalTime;
+		private static LinkedList<Long> turnaroundArrCompletionTime;
+		private static LinkedList<Long> responseArrArrivalTime;		
+		
+		// Threads
+		private static Thread thread = null;
+		
+		// Semaphores
+		private static Semaphore switchMutex = null;
+		
+		
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -148,7 +157,7 @@ public class Scheduler {
 	 */
 	public void startScheduling(Policy policy, int quantum) {
 		Scheduler.policy = policy;
-		Scheduler.quantum = quantum;
+		//Scheduler.quantum = quantum;
 		System.out.println("policy: " + policy);
 		System.out.println("quantum: " + quantum);
 		
