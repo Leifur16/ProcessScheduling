@@ -236,13 +236,14 @@ public class Scheduler {
 			finished = false;
 			avgTurnaroundTime = 0;
 			avgRespnseTime = 0;
-			thread = new Thread(new RoundRobinTimer(quantum));
-			thread.start();
-
 			FBprocessQueues = new ArrayList<Queue<FeedbackProcessInfo>>();
 			for(int i = 0; i < NUMBER_OF_FB_PQ; i++) {
 				FBprocessQueues.add(new LinkedList<FeedbackProcessInfo>());
 			}
+			thread = new Thread(new RoundRobinTimer(quantum));
+			thread.start();
+
+			
 			break;
 		}
 	}
@@ -482,7 +483,7 @@ public class Scheduler {
 		case FB:	// Feedback
 			try {
 				switchMutex.acquire();
-					turnaroundArrCompletionTime.add(processID, System.currentTimeMillis());
+					turnaroundArrCompletionTime.add(System.currentTimeMillis());
 					FBprocessQueues.get(lastRunningProcess.getQueueID()).remove();
 				switchMutex.release();
 				nextProcess();
