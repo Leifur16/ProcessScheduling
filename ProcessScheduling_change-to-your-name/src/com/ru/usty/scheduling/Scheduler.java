@@ -16,14 +16,16 @@ public class Scheduler {
 	int quantum;
 	public static Thread timer;
 	static ProcessInfo info;
-	SPNSchedule schedule;
+	SPNSchedule scheduleSPN;
+	SRTSchedule scheduleSRT;
 	static FeedbackProcessInfo lastRunningProcess;
 	
 	public final static int NUMBER_OF_FB_PQ = 7;
 	public final int INITIAL_QUEUE = 0;
 	
 	//Queue<Integer> processQueue;
-	PriorityQueue<SPNSchedule> priorityProcessQueue;
+	PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
+	PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
 
 	public static boolean rrMayDie = false;
 	
@@ -157,7 +159,67 @@ public class Scheduler {
 			processExecution.switchToProcess(linkedList.element());
 		}	
 	}
+	/*
+	private long findSRT() {
+		long SRT = Long.MAX_VALUE;
+		for(int processID : linkedList) {
+			ProcessInfo info = processExecution.getProcessInfo(processID);
+			long RT = info.totalServiceTime - info.elapsedExecutionTime;
+			if(SRT > RT) {
+				SRT = RT;
+			}
+		}
+		return SRT;
+	}
+	*/
 	
+	private void setSRT() {
+		long SRT = Long.MAX_VALUE;
+		int ID = -1; //?
+		for(int processID : linkedList) {
+			ProcessInfo info = processExecution.getProcessInfo(processID);
+			long RT = info.totalServiceTime - info.elapsedExecutionTime;
+			if(SRT > RT) {
+				SRT = RT;
+				ID = processID;
+			}
+		}
+		
+		if(linkedList.element() != ID) {
+			linkedList.remove(ID);
+			linkedList.addFirst(ID);
+		}
+	}
+	
+	private void addSRT(int processID) {
+		ProcessInfo info = processExecution.getProcessInfo(processID);
+		long SRT = info.totalServiceTime - info.elapsedExecutionTime;
+
+		if(linkedList.isEmpty()) { // SHOULD NOT BE USED EVER
+			System.out.println("WAS EMPTY");
+			return;
+		}
+		
+		for(int ID : linkedList) {
+			info = processExecution.getProcessInfo(ID);
+			long RT = info.totalServiceTime - info.elapsedExecutionTime;
+			if(SRT < RT) {
+				SRT = RT;
+				if(linkedList.indexOf(ID) > 0) {
+					linkedList.add(linkedList.indexOf(ID)-1, processID);
+				}			
+				return;
+			}
+			
+		}
+		
+		System.out.println("--------------------");
+		linkedList.add(processID);
+		
+		
+		
+		
+	}
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
@@ -214,8 +276,8 @@ public class Scheduler {
 			//rrMayDie = true;
 
 			System.out.println("Starting new scheduling task: Shortest process next");
-			priorityProcessQueue = new PriorityQueue<SPNSchedule>();
-			schedule = new SPNSchedule();
+			priorityProcessQueueSPN = new PriorityQueue<SPNSchedule>();
+			scheduleSPN = new SPNSchedule();
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
@@ -225,6 +287,11 @@ public class Scheduler {
 			/**
 			 * Add your policy specific initialization code here (if needed)
 			 */
+			
+
+			priorityProcessQueueSRT = new PriorityQueue<SRTSchedule>();
+			scheduleSRT= new SRTSchedule();
+			
 			break;
 		case HRRN:	//Highest response ratio next
 			System.out.println("Starting new scheduling task: Highest response ratio next");
@@ -282,14 +349,7 @@ public class Scheduler {
 		/**
 		 * Add scheduling code here
 		 */
-		info = processExecution.getProcessInfo(processID);
 		
-		/*
-		System.out.println("total time: " + info.totalServiceTime);
-		System.out.println("Execution time: " + info.elapsedExecutionTime);
-		System.out.println("waiting time: " + info.elapsedWaitingTime);
-		*/
-		//processExecution.switchToProcess(processID);
 		info = processExecution.getProcessInfo(processID);
 		System.out.println("PROCESS ID: " + processID);
 		System.out.println("total time: " + info.totalServiceTime);
@@ -319,14 +379,73 @@ public class Scheduler {
 			
 			SPNSchedule spn = new SPNSchedule(processID, info.totalServiceTime);
 			
-			schedule.addProcess(processID, info.totalServiceTime);
+			scheduleSPN.addProcess(processID, info.totalServiceTime);
 			
-			if(priorityProcessQueue.size() == 0) {
+			if(priorityProcessQueueSPN.size() == 0) {
 				processExecution.switchToProcess(processID);
 			}
 			
-			priorityProcessQueue.add(spn);
+			priorityProcessQueueSPN.add(spn);
 			
+			
+			break;
+		case SRT:
+			
+			
+			SRTSchedule srt = new SRTSchedule(processID, info.totalServiceTime-info.elapsedExecutionTime);	
+			
+			if(!priorityProcessQueueSRT.isEmpty())
+			{
+				ProcessInfo bestSRTinfo = processExecution.getProcessInfo(priorityProcessQueueSRT.peek().processID);
+				priorityProcessQueueSRT.peek().updateRemainingTime(bestSRTinfo.totalServiceTime - bestSRTinfo.elapsedExecutionTime);
+				
+			}
+			
+			scheduleSRT.addProcess(processID, info.totalServiceTime-info.elapsedExecutionTime);
+			
+			
+			
+			
+			
+			if(priorityProcessQueueSRT.isEmpty()) {
+				priorityProcessQueueSRT.add(srt);
+				processExecution.switchToProcess(processID);
+			}else {
+				
+				priorityProcessQueueSRT.add(srt);
+				
+				processExecution.switchToProcess(priorityProcessQueueSRT.peek().processID);
+				
+				/*
+				if(srt.remainingTime < priorityProcessQueueSRT.peek().remainingTime) {
+					processExecution.switchToProcess(processID);
+				}
+				*/
+				
+			}
+			
+			System.out.println("BEST ID: " + priorityProcessQueueSRT.peek().processID);
+			System.out.println("BEST TIME: " + priorityProcessQueueSRT.peek().remainingTime);
+			
+			
+			/*
+			System.out.println("BEFORE: " + linkedList.size());
+			if(linkedList.isEmpty()) { // Linked list is empty, add process and start
+				linkedList.add(processID);
+				processExecution.switchToProcess(processID);
+			}else {
+				ProcessInfo firstInListInfo = processExecution.getProcessInfo(linkedList.element());
+				long firstInlistRT = firstInListInfo.totalServiceTime - firstInListInfo.elapsedExecutionTime;
+				
+				if(info.totalServiceTime < firstInlistRT) {
+					linkedList.addFirst(processID);
+					processExecution.switchToProcess(processID);
+				}else {
+					addSRT(processID);
+				}
+			}
+			System.out.println("AFTER: " + linkedList.size());
+			*/
 			
 			break;
 		case HRRN:	//Highest response ratio next
@@ -383,14 +502,23 @@ public class Scheduler {
 			break;
 
 		case SPN:
-			SPNSchedule sched = new SPNSchedule(processID, schedule.getTimeForId(processID));
+			SPNSchedule sched = new SPNSchedule(processID, scheduleSPN.getTimeForId(processID));
 			
-			priorityProcessQueue.remove(sched);
+			priorityProcessQueueSPN.remove(sched);
 			
-			if(!priorityProcessQueue.isEmpty()) {	
-				processExecution.switchToProcess(priorityProcessQueue.peek().processID);
+			if(!priorityProcessQueueSPN.isEmpty()) {	
+				processExecution.switchToProcess(priorityProcessQueueSPN.peek().processID);
 			}
 		break;
+		case SRT:
+			
+			priorityProcessQueueSRT.remove();
+			if(!priorityProcessQueueSRT.isEmpty()) {	
+				processExecution.switchToProcess(priorityProcessQueueSRT.peek().processID);
+			}
+			
+			
+			break;
 			
 		case RR:	//Round robin
 	
