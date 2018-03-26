@@ -46,6 +46,7 @@ public class Scheduler {
 	 */
 	
 	static Semaphore switchMutex = null;
+	static Semaphore switchMutexParent = null;
 	static long startTime;
 	static long currTime;
 
@@ -53,13 +54,11 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public Scheduler(ProcessExecution processExecution) {
-		this.processExecution = processExecution;
+		Scheduler.processExecution = processExecution;
 		processQueue = new LinkedList<Integer>();
 	}
 	
 	public static void nextQueue() {
-		try {
-			switchMutex.acquire();
 		
 		switch(policy) {
 		case RR:	// Round Robin
@@ -88,9 +87,11 @@ public class Scheduler {
 						FeedbackProcessInfo tmp = lastRunningQueue.element();
 						lastRunningQueue.remove();
 						if(tmp.getQueueID() < NUMBER_OF_FB_PQ-1) {
+							
 							tmp.setQueueID(tmp.getQueueID() + 1);
 						}	
 						FBprocessQueues.get(tmp.getQueueID()).add(tmp);
+						System.out.println("moved to query nr. " + tmp.getQueueID() + "===========================================");
 					}
 				}
 			}
@@ -99,7 +100,7 @@ public class Scheduler {
 				if(!queue.isEmpty()) {
 					processExecution.switchToProcess(queue.element().getID());
 					lastRunningProcess = queue.element();
-					switchMutex.release();
+					startTime = System.currentTimeMillis(); 
 					return;
 				}
 			}
@@ -107,11 +108,6 @@ public class Scheduler {
 			break;
 		default:
 			break;
-		}
-		
-			switchMutex.release();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
 		}
 	}
 	
@@ -145,8 +141,8 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void startScheduling(Policy policy, int quantum) {
-		this.policy = policy;
-		this.quantum = quantum;
+		Scheduler.policy = policy;
+		Scheduler.quantum = quantum;
 		System.out.println("policy: " + policy);
 		System.out.println("quantum: " + quantum);
 		
@@ -177,6 +173,7 @@ public class Scheduler {
 			processQueue = null;
 			processQueue = new LinkedList<Integer>();
 			switchMutex = new Semaphore(1);
+			switchMutexParent = new Semaphore(1);
 			thread = new Thread(new RoundRobinTimer(quantum));
 			thread.start();
 			break;
@@ -196,14 +193,15 @@ public class Scheduler {
 			break;
 		case FB:	//Feedback
 			System.out.println("Starting new scheduling task: Feedback, quantum = " + quantum);		
-			switchMutex = new Semaphore(1);	
-			thread = new Thread(new RoundRobinTimer(quantum));
-			thread.start();
-
+			FBprocessQueues = null;
 			FBprocessQueues = new ArrayList<Queue<FeedbackProcessInfo>>();
 			for(int i = 0; i < NUMBER_OF_FB_PQ; i++) {
 				FBprocessQueues.add(new LinkedList<FeedbackProcessInfo>());
 			}
+			switchMutex = new Semaphore(1);
+			switchMutexParent = new Semaphore(1);
+			thread = new Thread(new RoundRobinTimer(quantum));
+			thread.start();
 			break;
 		}
 	}
@@ -241,13 +239,15 @@ public class Scheduler {
 			break;
 		case RR:	// Round robin
 			try {
+				
 				switchMutex.acquire();
 					processQueue.add(processID);	
 				switchMutex.release();
+				switchMutexParent.acquire();
 				if(processQueue.size() == 1) {
 					nextQueue();
 				}
-
+				switchMutexParent.release();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -295,11 +295,20 @@ public class Scheduler {
 			System.out.println("FB added process entered!");
 			
 			try {
+				
 				switchMutex.acquire();
 					FeedbackProcessInfo feedbackProcessInfo = new FeedbackProcessInfo(processID,INITIAL_QUEUE);
 					FBprocessQueues.get(INITIAL_QUEUE).add(feedbackProcessInfo);
 				switchMutex.release();
-				nextProcess();
+				switchMutexParent.acquire();
+				for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
+					if(!queue.isEmpty()) {
+						switchMutexParent.release();
+						return;
+					}
+				}
+				nextQueue();
+				switchMutexParent.release();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -347,14 +356,20 @@ public class Scheduler {
 			}
 			break;
 		case RR:	// Round robin
+			
 			try {
+				
 				switchMutex.acquire();
 					processQueue.remove(processID);
 				switchMutex.release();
+				switchMutexParent.acquire();
+				nextQueue();
+				switchMutexParent.release();
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 			}		
-			nextQueue();
+			
+			
 			break;
 		case HRRN:	// Highest response ratio next
 			System.out.println("HRRN removed process entered!");
@@ -363,10 +378,14 @@ public class Scheduler {
 			break;
 		case FB:	// Feedback
 			try {
+				
 				switchMutex.acquire();
 					FBprocessQueues.get(lastRunningProcess.getQueueID()).remove();
 				switchMutex.release();
-				nextProcess();
+				switchMutexParent.acquire();
+				nextQueue();
+				switchMutexParent.release();
+				
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -374,9 +393,5 @@ public class Scheduler {
 		default:
 			break;
 		}	
-	}
-
-	private void nextProcess() {
-		// TODO Auto-generated method stub
 	}
 }
