@@ -26,6 +26,11 @@ public class Scheduler {
 	//Queue<Integer> processQueue;
 	PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
 	PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
+	public LinkedList<Long> turnaroundArrArrivalTime;
+	public LinkedList<Long> turnaroundArrCompletionTime;
+	public LinkedList<Long> responseArrArrivalTime;
+	public long avgTurnaroundTime;
+	public long avgRespnseTime;
 
 	public static boolean rrMayDie = false;
 	
@@ -161,6 +166,11 @@ public class Scheduler {
 		case FCFS:	//First-come-first-served
 			System.out.println("Starting new scheduling task: First-come-first-served");
 			processQueue = new LinkedList<Integer>();
+			turnaroundArrArrivalTime = new LinkedList<Long>();
+			turnaroundArrCompletionTime = new LinkedList<Long>();
+			responseArrArrivalTime = new LinkedList<Long>();
+			avgTurnaroundTime = 0;
+			avgRespnseTime = 0;
 			break;
 		case RR:	//Round robin
 			System.out.println("Starting new scheduling task: Round robin, quantum = " + quantum);
@@ -210,9 +220,23 @@ public class Scheduler {
 		
 		switch(policy) {
 		case FCFS:	// First come first served
+			try {
+				responseArrArrivalTime.get(processID);
+				responseArrArrivalTime.add(processID, System.currentTimeMillis() + responseArrArrivalTime.get(processID));
+			} catch( IndexOutOfBoundsException e) {
+				responseArrArrivalTime.add(processID, System.currentTimeMillis());	
+			}
+
+			try {
+				turnaroundArrArrivalTime.get(processID);
+				turnaroundArrArrivalTime.add(processID, System.currentTimeMillis() + turnaroundArrArrivalTime.get(processID));
+			} catch( IndexOutOfBoundsException e) {
+				turnaroundArrArrivalTime.add(processID, System.currentTimeMillis());	
+			}
 			if(processQueue.size() == 0) {
 				processExecution.switchToProcess(processID);
 			}
+			
 			processQueue.add(processID);
 			break;
 		case RR:	// Round robin
@@ -295,6 +319,17 @@ public class Scheduler {
 			processQueue.remove();
 			if(processQueue.size() > 0) {
 				processExecution.switchToProcess(processQueue.element());
+			}
+			else {
+				for(int i = 0; i < turnaroundArrArrivalTime.size(); i++) {
+					long turnaroundTime = turnaroundArrCompletionTime.get(i) - turnaroundArrArrivalTime.get(i);
+					avgRespnseTime += responseArrArrivalTime.get(i);
+					avgTurnaroundTime += turnaroundTime;
+				}
+				avgRespnseTime = avgRespnseTime/responseArrArrivalTime.size();
+				avgTurnaroundTime = avgTurnaroundTime/turnaroundArrArrivalTime.size();
+				System.out.println("Average Turnaround time: " + avgTurnaroundTime);
+				System.out.println("Average Response time: " + avgRespnseTime);
 			}
 			break;
 		case SPN:	// Shortest process next
