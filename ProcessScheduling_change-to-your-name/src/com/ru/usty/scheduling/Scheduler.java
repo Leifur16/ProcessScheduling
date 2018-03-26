@@ -316,6 +316,7 @@ public class Scheduler {
 		
 		switch(policy) {
 		case FCFS:	// First come first served
+			turnaroundArrCompletionTime.add(processID, System.currentTimeMillis());
 			processQueue.remove();
 			if(processQueue.size() > 0) {
 				processExecution.switchToProcess(processQueue.element());
