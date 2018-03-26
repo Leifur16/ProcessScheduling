@@ -13,7 +13,7 @@ public class Scheduler {
 
 	static ProcessExecution processExecution;
 	static Policy policy;
-	int quantum;
+	static int quantum;
 	public static Thread timer;
 	static ProcessInfo info;
 	SPNSchedule schedule;
@@ -29,7 +29,7 @@ public class Scheduler {
 	
 	public static Queue<Integer> processQueue;
 	public static LinkedList<Integer> linkedList;
-	private Thread thread = null;
+	private static Thread thread = null;
 	public static ArrayList< Queue<FeedbackProcessInfo>> FBprocessQueues;
 	
 	private static int lastRunningProcessID;
@@ -38,7 +38,9 @@ public class Scheduler {
 	 * Add any objects and variables here (if needed)
 	 */
 	
-	static Semaphore switchMutex = null; 
+	static Semaphore switchMutex = null;
+	static long startTime;
+	static long currTime;
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -55,70 +57,66 @@ public class Scheduler {
 	
 	public static void nextQueue() {
 		
+		System.out.println("inside nextQueue");
+		
+		try {
+			switchMutex.acquire();
+		
 		switch(policy) {
 		case RR:	//First-come-first-served
-			try {
-				switchMutex.acquire();
-					if(processQueue.size() > 1) {
-	                    info = processExecution.getProcessInfo(processQueue.element());
-	                    if(lastRunningProcessID == processQueue.element()) {
-	                            
-	                            int temp = processQueue.remove();
-	                            processQueue.add(temp);
-	                            
-	                            processExecution.switchToProcess(processQueue.element());
-	                            lastRunningProcessID = processQueue.element();
-	                    }
-	                    else {
-	                            processExecution.switchToProcess(processQueue.element());
-	                            lastRunningProcessID = processQueue.element();
-	                    }
-		            }
-		            else if(processQueue.size() == 1) {
-		                    processExecution.switchToProcess(processQueue.element());
-		                    lastRunningProcessID = processQueue.element();
-		            }
-				switchMutex.release();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			
+			System.out.println("inside  nextQueue  RR  mutex");
 
+			if(processQueue.size() > 1) {
+				System.out.println("inside  nextQueue  RR  mutex if statement");
+                if(lastRunningProcessID == processQueue.element()) {
+                        
+                        int temp = processQueue.remove();
+                        processQueue.add(temp);
+                        
+                        processExecution.switchToProcess(processQueue.element());
+                        lastRunningProcessID = processQueue.element();
+                }
+                else {
+                        processExecution.switchToProcess(processQueue.element());
+                        lastRunningProcessID = processQueue.element();
+                }
+            }
+            else if(processQueue.size() == 1) {
+            	System.out.println("inside  nextQueue  RR  mutex else if statement");
+                    processExecution.switchToProcess(processQueue.element());
+                    lastRunningProcessID = processQueue.element();
+            }
+			
+			startTime = System.currentTimeMillis(); 
+			System.out.println("inside end of nextQueue  RR  mutex if statement");
 			break;
 		case FB:	//Feedback
-			try {
-				switchMutex.acquire();
-					if(lastRunningProcess != null) {
-						Queue<FeedbackProcessInfo> lastRunningQueue = FBprocessQueues.get(lastRunningProcess.queueID);
-						if(!lastRunningQueue.isEmpty()) {
-							if( lastRunningProcess == lastRunningQueue.element()) {
-								FeedbackProcessInfo tmp = lastRunningQueue.element();
-								lastRunningQueue.remove();
-								if(tmp.queueID < NUMBER_OF_FB_PQ-1) {
-									tmp.queueID++;
-								}	
-								System.out.println("----------------------------------------------------------------");
-								FBprocessQueues.get(tmp.queueID).add(tmp);
-							}
-						}
+				
+			if(lastRunningProcess != null) {
+				Queue<FeedbackProcessInfo> lastRunningQueue = FBprocessQueues.get(lastRunningProcess.queueID);
+				if(!lastRunningQueue.isEmpty()) {
+					if( lastRunningProcess == lastRunningQueue.element()) {
+						FeedbackProcessInfo tmp = lastRunningQueue.element();
+						lastRunningQueue.remove();
+						if(tmp.queueID < NUMBER_OF_FB_PQ-1) {
+							tmp.queueID++;
+						}	
+						System.out.println("----------------------------------------------------------------");
+						FBprocessQueues.get(tmp.queueID).add(tmp);
 					}
-					
-					
-				switchMutex.release();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+				}
 			}
 			
 			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
 				if(!queue.isEmpty()) {
-					try {
-						switchMutex.acquire();
+					
 						processExecution.switchToProcess(queue.element().ID);
 						lastRunningProcess = queue.element();
+						
+						// 
 						switchMutex.release();
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+					
 					return;
 				}
 			}
@@ -128,7 +126,10 @@ public class Scheduler {
 			break;
 		}
 		
-			
+			switchMutex.release();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void nextHRRN() {
@@ -310,6 +311,10 @@ public class Scheduler {
 				switchMutex.acquire();
 					processQueue.add(processID);	
 				switchMutex.release();
+				if(processQueue.size() == 1) {
+					nextQueue();
+				}
+				
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -343,23 +348,17 @@ public class Scheduler {
 		case FB:	//Highest response ratio next
 			System.out.println("FB added process entered!");
 			
-			
-			
 			try {
 				switchMutex.acquire();
 					FeedbackProcessInfo feedbackProcessInfo = new FeedbackProcessInfo(processID,INITIAL_QUEUE);
 					FBprocessQueues.get(INITIAL_QUEUE).add(feedbackProcessInfo);
 				switchMutex.release();
+				nextProcess();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			
-
-
 			break;
 		default:
-
-			
 		}
 	}
 
@@ -393,14 +392,19 @@ public class Scheduler {
 		break;
 			
 		case RR:	//Round robin
-	
+			
 			try {
 				switchMutex.acquire();
-					processQueue.remove(processID);
+				processQueue.remove(processID);
 				switchMutex.release();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
+					
+			System.out.println("inside RR");
+			nextQueue();
+			System.out.println("after switch inside RR");
 			
 			break;
 		case HRRN:	//Highest response ratio next
@@ -417,6 +421,7 @@ public class Scheduler {
 				switchMutex.acquire();
 					FBprocessQueues.get(lastRunningProcess.queueID).remove();
 				switchMutex.release();
+				nextProcess();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -426,5 +431,10 @@ public class Scheduler {
 		default:
 			break;
 		}	
+	}
+
+	private void nextProcess() {
+		// TODO Auto-generated method stub
+		
 	}
 }
