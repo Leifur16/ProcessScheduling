@@ -5,9 +5,9 @@ import java.util.Map;
 
 
 public class SRTSchedule implements Comparable<SRTSchedule> {
-	int processID;
-	long remainingTime;
-	public Map<Integer, Long> remainingTimeAndID;
+	private int processID;
+	private long remainingTime;
+	private Map<Integer, Long> remainingTimeAndID;
 	
 	public SRTSchedule() {
 		remainingTimeAndID = new HashMap<Integer, Long>();

@@ -5,16 +5,15 @@ import java.util.Map;
 
 
 public class SPNSchedule implements Comparable<SPNSchedule> {
-	int processID;
-	long totalTime;
-	public Map<Integer, Long> timerAndID;
+	private int processID;
+	private long totalTime;
+	private Map<Integer, Long> timerAndID;
 	
 	public SPNSchedule() {
 		timerAndID = new HashMap<Integer, Long>();
 	}
 	
 	public SPNSchedule(int proccess, long time) {
-		// TODO Auto-generated constructor stub
 		this.processID = proccess;
 		this.totalTime = time;	
 	}
@@ -22,8 +21,6 @@ public class SPNSchedule implements Comparable<SPNSchedule> {
 	public void addProcess(int id, long time) {
 		timerAndID.put(id, time);
 	}
-	
-	
 	
 	public long getTime() {
 		return totalTime;
@@ -36,9 +33,9 @@ public class SPNSchedule implements Comparable<SPNSchedule> {
 	public long getTimeForId(int id) {
 		return timerAndID.get(id);
 	}
+	
 	@Override
 	public boolean equals(Object o) {
-		//return this.getTime() == spn.getTime();
 		if(!(o instanceof SPNSchedule)) {
 			return false;
 		}
@@ -46,7 +43,6 @@ public class SPNSchedule implements Comparable<SPNSchedule> {
 		if(this.totalTime == s.getTime()) {
 			return true;
 		}
-		
 		return false;
 	}
 
@@ -63,6 +59,5 @@ public class SPNSchedule implements Comparable<SPNSchedule> {
 		else {
 			return -1;
 		}
-		
 	}
 }

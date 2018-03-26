@@ -24,13 +24,23 @@ public class RoundRobinTimer implements Runnable{
 			
 			try {
 				Thread.sleep(quantum);
-				//System.out.println("This thing is running ");
 				
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			3
+		
+			System.out.println("before currTime is taken");
+			Scheduler.currTime = System.currentTimeMillis();
+			System.out.println("after currTime is taken");
+			while(Scheduler.currTime - Scheduler.startTime < quantum) {
+				System.out.println("=================== FINISHING MY TIME ===========================");
+				try {
+					Thread.sleep(quantum - (Scheduler.currTime - Scheduler.startTime));
+					Scheduler.currTime = System.currentTimeMillis();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 			Scheduler.nextQueue();
 		}
 	}
