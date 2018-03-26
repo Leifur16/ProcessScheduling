@@ -41,7 +41,16 @@ public class RoundRobinTimer implements Runnable{
 					e.printStackTrace();
 				}
 			}
-			Scheduler.nextQueue();
+			
+			try {
+				Scheduler.switchMutexParent.acquire();
+				Scheduler.nextQueue();
+				Scheduler.switchMutexParent.release();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		}
 	}
 }
