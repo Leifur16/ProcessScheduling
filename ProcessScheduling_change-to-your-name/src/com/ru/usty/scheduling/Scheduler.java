@@ -6,52 +6,61 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
-import javax.print.attribute.standard.Finishings;
-
 import com.ru.usty.scheduling.process.ProcessExecution;
 import com.ru.usty.scheduling.process.ProcessInfo;
 
 public class Scheduler {
+	/// ----- PUBLIC ----- ///
+		// Variables
+		public static Thread timer;
+		public static boolean rrMayDie = false;
+		public static long startTime;
+		public static long currTime;
+		public static boolean finished;
+		
+		// Semaphores
+		public static Semaphore switchMutexParent = null;
 
-	static ProcessExecution processExecution;
-	static Policy policy;
-	static int quantum;
-	public static Thread timer;
-	static ProcessInfo info;
-	SPNSchedule scheduleSPN;
-	SRTSchedule scheduleSRT;
-	static FeedbackProcessInfo lastRunningProcess;
+	/// ----- PRIVATE ----- ///
+		// Constants
+		private final static int NUMBER_OF_FB_PQ = 7;
+		private final static int INITIAL_QUEUE = 0;
+		
+		// Variables
+		private static long avgTurnaroundTime;
+		private static long avgRespnseTime;
+		private static int lastRunningProcessID;
+		//private static int quantum; // REMOVE
+		
+		// Enums
+		private static Policy policy;
+		
+		// Classes
+		private static ProcessExecution processExecution;
+		private static ProcessInfo info;
+		private static SPNSchedule scheduleSPN;
+		private static SRTSchedule scheduleSRT;
+		private static FeedbackProcessInfo lastRunningProcess;
 	
-	public final static int NUMBER_OF_FB_PQ = 7;
-	public final int INITIAL_QUEUE = 0;
-	public static boolean finished;
-	
-	//Queue<Integer> processQueue;
-	PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
-	PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
-	public LinkedList<Long> turnaroundArrArrivalTime;
-	public LinkedList<Long> turnaroundArrCompletionTime;
-	public LinkedList<Long> responseArrArrivalTime;
-	public long avgTurnaroundTime;
-	public long avgRespnseTime;
-
-	public static boolean rrMayDie = false;
-	
-	public static Queue<Integer> processQueue;
-	public static LinkedList<Integer> linkedList;
-	private static Thread thread = null;
-	public static ArrayList< Queue<FeedbackProcessInfo>> FBprocessQueues;
-	
-	private static int lastRunningProcessID;
-	
-	/**
-	 * Add any objects and variables here (if needed)
-	 */
-	
-	static Semaphore switchMutex = null;
-	static Semaphore switchMutexParent = null;
-	static long startTime;
-	static long currTime;
+		// Queues
+		private static PriorityQueue<SPNSchedule> priorityProcessQueueSPN;
+		private static PriorityQueue<SRTSchedule> priorityProcessQueueSRT;
+		private static Queue<Integer> processQueue;
+		
+		// Lists
+		private static ArrayList< Queue<FeedbackProcessInfo>> FBprocessQueues;
+		private static LinkedList<Integer> linkedList;
+		private static LinkedList<Long> turnaroundArrArrivalTime;
+		private static LinkedList<Long> turnaroundArrCompletionTime;
+		private static LinkedList<Long> responseArrArrivalTime;		
+		
+		// Threads
+		private static Thread thread = null;
+		
+		// Semaphores
+		private static Semaphore switchMutex = null;
+		
+		
 
 	/**
 	 * DO NOT CHANGE DEFINITION OF OPERATION
@@ -75,12 +84,6 @@ public class Scheduler {
 			if(processQueue.size() > 1) {
                 if(lastRunningProcessID == processQueue.element()) { 
                     int temp = processQueue.remove();
-                    /*try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}*/
                     processQueue.add(temp);
                     processExecution.switchToProcess(processQueue.element());
                     lastRunningProcessID = processQueue.element();
@@ -106,13 +109,6 @@ public class Scheduler {
 						FeedbackProcessInfo tmp = lastRunningQueue.element();
 						lastRunningQueue.remove();
 						
-						/*try {
-							Thread.sleep(10);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}*/
-						
 						if(tmp.getQueueID() < NUMBER_OF_FB_PQ-1) {
 							
 							tmp.setQueueID(tmp.getQueueID() + 1);
@@ -122,17 +118,21 @@ public class Scheduler {
 					}
 				}
 			}
-			
+			int count = 0;
 			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
+				
 				if(!queue.isEmpty()) {
+					System.out.println(count);
 					System.out.println("Running process");
-					System.out.println(queue.size());
+					System.out.println("queue.size()" + queue.size());
+					System.out.println("queue.element().getID()" + queue.element().getID());
 					processExecution.switchToProcess(queue.element().getID());
 					lastRunningProcess = queue.element();
 					startTime = System.currentTimeMillis(); 
 					switchMutex.release();
 					return;
 				}
+				count++;
 			}
 
 			break;
@@ -173,7 +173,7 @@ public class Scheduler {
 	 */
 	public void startScheduling(Policy policy, int quantum) {
 		Scheduler.policy = policy;
-		Scheduler.quantum = quantum;
+		//Scheduler.quantum = quantum;
 		System.out.println("policy: " + policy);
 		System.out.println("quantum: " + quantum);
 		
@@ -259,16 +259,17 @@ public class Scheduler {
 			finished = false;
 			avgTurnaroundTime = 0;
 			avgRespnseTime = 0;
-			thread = new Thread(new RoundRobinTimer(quantum));
-			thread.start();
+
 			FBprocessQueues = new ArrayList<Queue<FeedbackProcessInfo>>();
 			for(int i = 0; i < NUMBER_OF_FB_PQ; i++) {
 				FBprocessQueues.add(new LinkedList<FeedbackProcessInfo>());
 			}
+
 			switchMutex = new Semaphore(1);
 			switchMutexParent = new Semaphore(1);
 			thread = new Thread(new RoundRobinTimer(quantum));
 			thread.start();
+
 			break;
 		}
 	}
@@ -526,8 +527,10 @@ public class Scheduler {
 			try {
 				
 				switchMutex.acquire();
-					//turnaroundArrCompletionTime.add(processID, System.currentTimeMillis());
-					FBprocessQueues.get(lastRunningProcess.getQueueID()).remove();
+
+				turnaroundArrCompletionTime.add(System.currentTimeMillis());
+
+				FBprocessQueues.get(lastRunningProcess.getQueueID()).remove();
 				switchMutex.release();
 				switchMutexParent.acquire();
 				nextQueue();

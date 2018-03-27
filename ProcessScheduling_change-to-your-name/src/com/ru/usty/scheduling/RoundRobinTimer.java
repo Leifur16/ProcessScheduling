@@ -32,10 +32,16 @@ public class RoundRobinTimer implements Runnable{
 			System.out.println("before currTime is taken");
 			Scheduler.currTime = System.currentTimeMillis();
 			System.out.println("after currTime is taken");
-			while(Scheduler.currTime - Scheduler.startTime < quantum) {
+			
+			System.out.println("Time diff" + (System.currentTimeMillis() - Scheduler.startTime) + "<" + quantum);
+			
+			while((Scheduler.currTime - Scheduler.startTime) < quantum) {
 				System.out.println("=================== FINISHING MY TIME ===========================");
 				try {
-					Thread.sleep(quantum - (Scheduler.currTime - Scheduler.startTime));
+					// + 10 not to fix conflict errors but to fix error with given code
+					// if process is started to close to startTime being taken threads sometime wont
+					// start running even though it has definitely been switched to
+					Thread.sleep(quantum - (Scheduler.currTime - Scheduler.startTime) + 10); 
 					Scheduler.currTime = System.currentTimeMillis();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
