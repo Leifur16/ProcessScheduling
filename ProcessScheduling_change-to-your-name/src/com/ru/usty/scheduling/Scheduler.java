@@ -169,8 +169,7 @@ public class Scheduler {
 	public void startScheduling(Policy policy, int quantum) {
 		Scheduler.policy = policy;
 		//Scheduler.quantum = quantum;
-		System.out.println("policy: " + policy);
-		System.out.println("quantum: " + quantum);
+		System.out.println("");
 		
 		rrMayDie = true;
 		if(thread != null) {
@@ -273,7 +272,9 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processAdded(int processID) {
-		System.out.println("process " + processID +  " added");
+		System.out.println("Process " + processID + " added");
+		
+		info = processExecution.getProcessInfo(processID);
 		
 		switch(policy) {
 		case FCFS:	// First come first served
@@ -538,7 +539,7 @@ public class Scheduler {
 			break;
 		}	
 		if(finished) { 
-			System.out.println("No processes in queues");
+			System.out.println("No processes in queue/queues");
 			for(int i = 0; i < turnaroundArrArrivalTime.size(); i++) {
 				long turnaroundTime = turnaroundArrCompletionTime.get(i) - turnaroundArrArrivalTime.get(i);
 				avgRespnseTime += responseArrArrivalTime.get(i);
