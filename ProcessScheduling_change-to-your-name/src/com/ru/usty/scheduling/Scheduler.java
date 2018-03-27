@@ -114,7 +114,6 @@ public class Scheduler {
 							tmp.setQueueID(tmp.getQueueID() + 1);
 						}	
 						FBprocessQueues.get(tmp.getQueueID()).add(tmp);
-						System.out.println("moved to query nr. " + tmp.getQueueID() + "===========================================");
 					}
 				}
 			}
@@ -122,10 +121,6 @@ public class Scheduler {
 			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
 				
 				if(!queue.isEmpty()) {
-					System.out.println(count);
-					System.out.println("Running process");
-					System.out.println("queue.size()" + queue.size());
-					System.out.println("queue.element().getID()" + queue.element().getID());
 					processExecution.switchToProcess(queue.element().getID());
 					lastRunningProcess = queue.element();
 					startTime = System.currentTimeMillis(); 
@@ -278,11 +273,7 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processAdded(int processID) {
-		info = processExecution.getProcessInfo(processID);
-		System.out.println("PROCESS ID: " + processID);
-		System.out.println("total time: " + info.totalServiceTime);
-		System.out.println("Execution time: " + info.elapsedExecutionTime);
-		System.out.println("waiting time: " + info.elapsedWaitingTime);
+		System.out.println("process " + processID +  " added");
 		
 		switch(policy) {
 		case FCFS:	// First come first served
@@ -394,7 +385,6 @@ public class Scheduler {
 			}
 			break;
 		case HRRN:	// Highest response ratio next
-			System.out.println("HRRN added process entered!");
 			
 			try {
 				responseArrArrivalTime.get(processID);
@@ -418,9 +408,7 @@ public class Scheduler {
 				linkedList.add(processID);
 			}
 			break;
-		case FB:	// Feedback
-			System.out.println("FB added process entered!");
-			
+		case FB:	// Feedback			
 			try {
 				
 				switchMutex.acquire();
@@ -462,9 +450,7 @@ public class Scheduler {
 	 * DO NOT CHANGE DEFINITION OF OPERATION
 	 */
 	public void processFinished(int processID) {
-		System.out.println("Process finished");
-		
-		
+		System.out.println("Process " + processID + " finished");
 		
 		switch(policy) {
 		case FCFS:	// First come first served
@@ -517,7 +503,6 @@ public class Scheduler {
 			
 			break;
 		case HRRN:	// Highest response ratio next
-			System.out.println("HRRN removed process entered!");
 			turnaroundArrCompletionTime.add(System.currentTimeMillis());
 			linkedList.removeFirst();
 			
@@ -539,11 +524,21 @@ public class Scheduler {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+			
+			for( Queue<FeedbackProcessInfo> queue : FBprocessQueues) {
+				
+			    if(!queue.isEmpty()) {
+			    return;
+			    }				
+			}
+			finished = true;			
+			
 			break;
 		default:
 			break;
 		}	
 		if(finished) { 
+			System.out.println("No processes in queues");
 			for(int i = 0; i < turnaroundArrArrivalTime.size(); i++) {
 				long turnaroundTime = turnaroundArrCompletionTime.get(i) - turnaroundArrArrivalTime.get(i);
 				avgRespnseTime += responseArrArrivalTime.get(i);
